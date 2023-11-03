@@ -9,5 +9,5 @@ Hidden in my code are little snipets of animal sayings. If you find them, I know
 ```yml
 install.packages('cowsay')
 library(cowsay)
-say("catfact", "cat")
+say("Hello world!", "cat")
 ```
