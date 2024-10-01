@@ -48,7 +48,7 @@ init_values <- function(){
 params <- c("alpha", "beta1", "beta2") 
 ```
 
-Finally, we can fit our JAGS model to estimate coefficients with the latent probability.
+Finally, we can fit our JAGS model to estimate coefficients for the latent probability.
 ```yml
 fit_lm1 <- jags(data = jagsdata_s1, inits = init_values, parameters.to.save = params, model.file = mod_jags,
 			   n.chains = 3, n.iter = 12000, n.burnin = 2000, n.thin = 10, DIC = F)
