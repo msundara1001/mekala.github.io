@@ -1,7 +1,62 @@
 # mekala.github.io
 My goal is to showcase preliminary statistical pipelines I am working on. 
 Here are some example codes I am developing:
-1. Bayesian Hierarhical Pipeline
+1. Bayesian Beta-Binomial pipeline (corrected for overdispersion) to explore outbreak amplification risk
+
+Start by installing and loading required packages. Read outbreak dataset. 
+```yml
+library(brms)
+data<-read.csv("Disease Outbreaks_FINAL.csv",header=TRUE)
+```
+
+Standardized covariates for variables with measurements outside 0 and 1 and so that Bayesian priors are not heard to select.
+```yml
+data$nightlightsc<-scale(data$nightlight,center=TRUE,scale=TRUE)
+data$GDPsc<-scale(data$GDP,center=TRUE,scale=TRUE)
+data$popsc<-scale(data$population,center=TRUE,scale=TRUE)
+data$BIO01sc<-scale(data$BIO01,center=TRUE,scale=TRUE)
+data$BIO12sc<-scale(data$BIO12,center=TRUE,scale=TRUE)
+data$cellsc<-scale(data$cell,center=TRUE,scale=TRUE)
+data$landlinesc<-scale(data$landline,center=TRUE,scale=TRUE)
+```
+Now setup the Bayesian Beta-binomial model (overdispersion parameter is phi just like a negative binomial distribution).
+```yml
+beta_binomial2 <- custom_family(
+  "beta_binomial2", dpars = c("mu", "phi"),
+  links = c("logit", "log"),
+  lb = c(0, 0), ub = c(1, NA),
+  type = "int", vars = "vint1[n]"
+)
+
+
+stan_funs <- "
+  real beta_binomial2_lpmf(int y, real mu, real phi, int T) {
+    return beta_binomial_lpmf(y | T, mu * phi, (1 - mu) * phi);
+  }
+  int beta_binomial2_rng(real mu, real phi, int T) {
+    return beta_binomial_rng(T, mu * phi, (1 - mu) * phi);
+  }
+"
+
+stanvars <- stanvar(scode = stan_funs, block = "functions")
+```
+Fit the brm model for real outbreak case data setting number of trials in the model to be total population size at location that can be infected.
+```yml
+fit2 <- brm(
+  cases | vint(round(popREV)) ~ nightlightsc+GDPsc+popsc+BIO01sc+BIO12sc+cellsc+urban_percent+forest_percent+crop_percent+landlinesc+shdi, data = data,
+  family = beta_binomial2, stanvars = stanvars
+)
+```
+
+Now make predictions of expected case numbers with new population sizes and covariate data.
+```yml
+newdata_pred <- data.frame(popREV = c(90000,129000,123812))
+newdata_pred<-as.data.frame(cbind(newdata_pred,data[1:3,c("crop_percent","forest_percent","urban_percent","GDPsc","landlinesc","nightlightsc","popsc","cellsc","BIO01sc","BIO12sc","shdi")]))
+pp<-posterior_predict(fit2,newdata_pred)
+colMeans(pp)
+```
+
+2. Bayesian Hierarchical Pipeline to model infectious disease exposure risk
 
 Start by installing and loading required packages. We will set seed to replicate our results in this example.
 ```yml
